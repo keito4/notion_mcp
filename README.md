@@ -59,7 +59,7 @@ uv pip install -e .
 5. Create a `.env` file:
 ```env
 NOTION_API_KEY=your-api-key-here
-NOTION_DATABASE_ID=your-database-id-here
+NOTION_TODO_DATABASE_ID=your-database-id-here
 ```
 
 6. Configure Claude Desktop:

@@ -4,8 +4,7 @@ import logging
 from typing import Any, Sequence
 
 from .tools.handlers import TOOL_HANDLERS
-from .config.settings import get_settings
-
+from .api.notion import NotionClient
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger('notion_mcp')
 
@@ -45,7 +44,6 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | Embedde
 async def main():
     """Main entry point for the server"""
     from mcp.server.stdio import stdio_server
-    settings = get_settings()
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(

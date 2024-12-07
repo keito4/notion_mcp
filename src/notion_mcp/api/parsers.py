@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from .utils import JST
+from ..utils.cache import RelationCache
 
 
 def parse_date_property(props: dict, prop_name: str) -> Optional[datetime]:
@@ -34,3 +35,23 @@ def parse_title_property(props: dict, prop_name: str) -> Optional[str]:
 def parse_checkbox_property(props: dict, prop_name: str) -> bool:
     """Parse a checkbox property and return its boolean value."""
     return props.get(prop_name, {}).get("checkbox", False)
+
+
+def parse_relations_property(cache: RelationCache, props: dict, prop_name: str, database_id: str):
+    relation_data = props.get(prop_name, {}).get("relation", [])
+    if not relation_data:
+        return None
+
+    relation_ids = [r["id"] for r in relation_data]
+
+    uncached_ids = [
+        rid for rid in relation_ids if not cache.get_name(database_id, rid)]
+
+    if uncached_ids:
+        raise ValueError(f"Uncached relation ids: {uncached_ids}")
+
+    relations = []
+    for rid in relation_ids:
+        rname = cache.get_name(database_id, rid)
+        relations.append({"id": rid, "name": rname if rname else "Unknown"})
+    return relations

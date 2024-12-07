@@ -1,19 +1,18 @@
 import httpx
-import logging
 from datetime import datetime
 from typing import List, Optional
 
 from ..config.settings import get_settings
 from ..models.todo import Todo, TodoCreate
+from ..utils.cache import RelationCache
 
 from .utils import to_utc_date_str, JST
 from .parsers import (
     parse_title_property, parse_checkbox_property, parse_date_property,
-    parse_select_property
+    parse_select_property, parse_relations_property
 )
 from .payloads import build_filter_condition, build_query_payload, build_properties_for_todo
 
-logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -24,6 +23,7 @@ class NotionClient:
             "Content-Type": "application/json",
             "Notion-Version": settings.notion_version
         }
+        self.cache = RelationCache()
 
     async def fetch_todos(
         self,
@@ -41,7 +41,7 @@ class NotionClient:
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{settings.notion_base_url}/databases/{settings.notion_database_id}/query",
+                f"{settings.notion_base_url}/databases/{settings.notion_todo_database_id}/query",
                 headers=self.headers,
                 json=query_payload
             )
@@ -68,7 +68,7 @@ class NotionClient:
                 f"{settings.notion_base_url}/pages",
                 headers=self.headers,
                 json={
-                    "parent": {"database_id": settings.notion_database_id},
+                    "parent": {"database_id": settings.notion_todo_database_id},
                     "properties": properties
                 }
             )
@@ -142,7 +142,8 @@ class NotionClient:
             props, "Checkbox") or parse_checkbox_property(props, "Done")
         date_value = parse_date_property(props, "Date")
         priority = parse_select_property(props, "Priority")
-        project = parse_select_property(props, "Project")
+        projects = parse_relations_property(
+            self.cache, props, "Project", settings.notion_project_database_id)
         repeat_task = parse_select_property(props, "Repeat")
 
         created_time_str = notion_data.get("created_time")
@@ -163,8 +164,38 @@ class NotionClient:
             name=name,
             date=date_value,
             priority=priority,
-            project=project,
+            projects=projects,
             repeat_task=repeat_task,
             created=created_time,
             done=bool(done)
         )
+
+    async def fetch_all_projects(self):
+        projects_db_id = settings.notion_project_database_id
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{settings.notion_base_url}/databases/{projects_db_id}/query",
+                headers=self.headers,
+                params={}
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        project_map = {}
+        for item in data.get("results", []):
+            pid = item.get("id")
+            props = item.get("properties", {})
+            name = self._extract_title(props, "Name")
+            if pid and name:
+                project_map[pid] = name
+
+        if not project_map:
+            raise RuntimeError(
+                "No projects found from Notion. Startup aborted.")
+
+    def _extract_title(self, props: dict, prop_name: str) -> Optional[str]:
+        title_data = props.get(prop_name, {}).get("title", [])
+        if len(title_data) > 0 and "text" in title_data[0]:
+            return title_data[0]["text"].get("content")
+        return None
