@@ -1,68 +1,10 @@
-from mcp.types import Tool, TextContent
-from typing import List
+from mcp.types import TextContent
+from typing import List, Optional
 import json
 from datetime import datetime
-from typing import Optional
 
 from ..api.notion import NotionClient
 from ..models.todo import TodoCreate
-
-
-def get_tool_definitions() -> List[Tool]:
-    """Get list of available todo tools"""
-    return [
-        Tool(
-            name="add_todo",
-            description="Add a new todo item",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "The todo task description"
-                    },
-                    "when": {
-                        "type": "string",
-                        "description": "When the task should be done (today or later)",
-                        "enum": ["today", "later"]
-                    }
-                },
-                "required": ["task", "when"]
-            }
-        ),
-        Tool(
-            name="show_specific_date_todos",
-            description="Show todo items from Notion on a specific date",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "start_date": {
-                        "type": "string",
-                        "description": "Start date (YYYY-MM-DDTHH:MM:SS.SSSSSS)"
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "description": "End date (YYYY-MM-DDTHH:MM:SS.SSSSSS)"
-                    }
-                },
-                "required": []
-            }
-        ),
-        Tool(
-            name="complete_todo",
-            description="Mark a todo item as complete",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "task_id": {
-                        "type": "string",
-                        "description": "The ID of the todo task to mark as complete"
-                    }
-                },
-                "required": ["task_id"]
-            }
-        )
-    ]
 
 
 class TodoTools:
@@ -70,43 +12,41 @@ class TodoTools:
         self.client = NotionClient()
 
     async def add_todo(self, task: str, when: str) -> TextContent:
-        """Add a new todo item"""
-
-        # when="today" の場合は今日の日付、"later"の場合は日付指定なしとする例
         date_value = datetime.now() if when.lower() == "today" else None
 
         todo_create = TodoCreate(
             name=task,
             date=date_value,
-            # 必要に応じてpriority, project, repeat_taskを設定可能
-            # priority="High",
-            # project="MyProject",
-            # repeat_task="Weekly"
+            # Additional fields like priority, project, repeat_task can be set if needed.
         )
 
         todo = await self.client.create_todo(todo_create)
+        return self._format_add_message(todo.name, todo.date)
+
+    async def show_todos(self, start_date: Optional[datetime], end_date: Optional[datetime]) -> TextContent:
+        todos = await self.client.fetch_todos(start_date=start_date, end_date=end_date)
+        return self._format_show_message(todos)
+
+    async def complete_todo(self, task_id: str) -> TextContent:
+        todo = await self.client.complete_todo(task_id)
+        return self._format_complete_message(todo.name)
+
+    def _format_add_message(self, task_name: str, date_value: Optional[datetime]) -> TextContent:
+        scheduled_for = date_value.isoformat() if date_value else "later"
         return TextContent(
             type="text",
-            text=f"Added todo: {todo.name} scheduled for {
-                todo.date if todo.date else 'later'}"
+            text=f"Added todo: {task_name} scheduled for {scheduled_for}"
         )
 
-    async def show_todos(self, start_date: datetime.date,
-                         end_date: datetime.date) -> TextContent:
-        """Show todos, optionally filtered to a specific date"""
-        todos = await self.client.fetch_todos(
-            start_date=start_date, end_date=end_date)
-
+    def _format_show_message(self, todos: List[TodoCreate]) -> TextContent:
         return TextContent(
             type="text",
             text=json.dumps([todo.model_dump()
                             for todo in todos], indent=2, default=str)
         )
 
-    async def complete_todo(self, task_id: str) -> TextContent:
-        """Mark a todo as complete"""
-        todo = await self.client.complete_todo(task_id)
+    def _format_complete_message(self, task_name: str) -> TextContent:
         return TextContent(
             type="text",
-            text=f"Marked todo as complete: {todo.name}"
+            text=f"Marked todo as complete: {task_name}"
         )

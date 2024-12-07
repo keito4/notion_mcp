@@ -84,7 +84,7 @@ class NotionClient:
                 headers=self.headers,
                 json={
                     "properties": {
-                        "Checkbox": {
+                        "Done": {
                             "type": "checkbox",
                             "checkbox": True
                         }
