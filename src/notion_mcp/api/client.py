@@ -76,6 +76,39 @@ class NotionClient:
 
         return self._build_todo_from_properties(data)
 
+    async def change_todo_schedule(
+        self,
+        page_id: str,
+        start_datetime: datetime,
+        end_datetime: Optional[datetime] = None
+    ) -> Todo:
+        """
+        Update the 'Date' property of a todo in Notion to the given start and end datetimes.
+        Returns the updated Todo object.
+        """
+        date_property = {
+            "Date": {
+                "type": "date",
+                "date": {
+                    "start": to_utc_date_str(start_datetime),
+                    "end": to_utc_date_str(end_datetime) if end_datetime else None
+                }
+            }
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.patch(
+                f"{settings.notion_base_url}/pages/{page_id}",
+                headers=self.headers,
+                json={
+                    "properties": date_property
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return self._build_todo_from_properties(data)
+
     async def complete_todo(self, page_id: str) -> Todo:
         """Mark a todo as complete in Notion and return the updated Todo."""
         async with httpx.AsyncClient() as client:

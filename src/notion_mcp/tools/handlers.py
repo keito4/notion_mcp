@@ -37,6 +37,9 @@ async def handle_show_specific_date_todos(arguments: dict) -> Sequence[TextConte
 
 
 async def handle_change_todo_schedule(arguments: dict) -> Sequence[TextContent]:
+    settings = get_settings()
+    tz = pytz.timezone(settings.tz)
+
     task_id = arguments.get("task_id")
     start_datetime = arguments.get("start_datetime")
     end_datetime = arguments.get("end_datetime")
@@ -45,6 +48,9 @@ async def handle_change_todo_schedule(arguments: dict) -> Sequence[TextContent]:
         raise ValueError("Task ID is required")
     if not start_datetime or not end_datetime:
         raise ValueError("start_datetime and end_datetime are required")
+
+    start_datetime = datetime.fromisoformat(start_datetime).replace(tzinfo=tz)
+    end_datetime = datetime.fromisoformat(end_datetime).replace(tzinfo=tz)
 
     return [await todo_tools.change_todo_schedule(task_id, start_datetime, end_datetime)]
 
@@ -106,7 +112,8 @@ TOOL_HANDLERS = {
                 },
                 "end_datetime": {
                     "type": "string",
-                    "description": "The datetime the task should be done (YYYY-MM-DDTHH:MM:SS.SSSSSS). Can be omitted."
+                    "description": "The datetime the task should be done (YYYY-MM-DDTHH:MM:SS.SSSSSS). If omitted, the task will be scheduled for the entire day. "
+                                   "The end_datetime must be at least 30 minutes after the start_datetime."
                 }
             },
             "required": ["task_id", "start_datetime", "end_datetime"]
