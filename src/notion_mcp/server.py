@@ -1,6 +1,6 @@
 from mcp.server import Server
 from mcp.types import (
-    Resource, 
+    Resource,
     Tool,
     TextContent,
     EmbeddedResource
@@ -8,7 +8,6 @@ from mcp.types import (
 from pydantic import AnyUrl
 import os
 import json
-from datetime import datetime
 import httpx
 from typing import Any, Sequence
 from dotenv import load_dotenv
@@ -48,6 +47,7 @@ headers = {
     "Notion-Version": NOTION_VERSION
 }
 
+
 async def fetch_todos() -> dict:
     """Fetch todos from Notion database"""
     async with httpx.AsyncClient() as client:
@@ -65,6 +65,7 @@ async def fetch_todos() -> dict:
         )
         response.raise_for_status()
         return response.json()
+
 
 async def create_todo(task: str, when: str) -> dict:
     """Create a new todo in Notion"""
@@ -93,6 +94,7 @@ async def create_todo(task: str, when: str) -> dict:
         response.raise_for_status()
         return response.json()
 
+
 async def complete_todo(page_id: str) -> dict:
     """Mark a todo as complete in Notion"""
     async with httpx.AsyncClient() as client:
@@ -110,6 +112,7 @@ async def complete_todo(page_id: str) -> dict:
         )
         response.raise_for_status()
         return response.json()
+
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
@@ -168,21 +171,22 @@ async def list_tools() -> list[Tool]:
         )
     ]
 
+
 @server.call_tool()
 async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | EmbeddedResource]:
     """Handle tool calls for todo management"""
     if name == "add_todo":
         if not isinstance(arguments, dict):
             raise ValueError("Invalid arguments")
-            
+
         task = arguments.get("task")
         when = arguments.get("when", "later")
-        
+
         if not task:
             raise ValueError("Task is required")
         if when not in ["today", "later"]:
             raise ValueError("When must be 'today' or 'later'")
-            
+
         try:
             result = await create_todo(task, when)
             return [
@@ -196,10 +200,11 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | Embedde
             return [
                 TextContent(
                     type="text",
-                    text=f"Error adding todo: {str(e)}\nPlease make sure your Notion integration is properly set up and has access to the database."
+                    text=f"Error adding todo: {str(
+                        e)}\nPlease make sure your Notion integration is properly set up and has access to the database."
                 )
             ]
-            
+
     elif name in ["show_all_todos", "show_today_todos"]:
         try:
             todos = await fetch_todos()
@@ -213,12 +218,12 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | Embedde
                     "when": props["When"]["select"]["name"] if props["When"]["select"] else "unknown",
                     "created": todo["created_time"]
                 }
-                
+
                 if name == "show_today_todos" and formatted_todo["when"].lower() != "today":
                     continue
-                    
+
                 formatted_todos.append(formatted_todo)
-            
+
             return [
                 TextContent(
                     type="text",
@@ -230,18 +235,19 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | Embedde
             return [
                 TextContent(
                     type="text",
-                    text=f"Error fetching todos: {str(e)}\nPlease make sure your Notion integration is properly set up and has access to the database."
+                    text=f"Error fetching todos: {str(
+                        e)}\nPlease make sure your Notion integration is properly set up and has access to the database."
                 )
             ]
-    
+
     elif name == "complete_todo":
         if not isinstance(arguments, dict):
             raise ValueError("Invalid arguments")
-            
+
         task_id = arguments.get("task_id")
         if not task_id:
             raise ValueError("Task ID is required")
-            
+
         try:
             result = await complete_todo(task_id)
             return [
@@ -255,19 +261,22 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | Embedde
             return [
                 TextContent(
                     type="text",
-                    text=f"Error completing todo: {str(e)}\nPlease make sure your Notion integration is properly set up and has access to the database."
+                    text=f"Error completing todo: {str(
+                        e)}\nPlease make sure your Notion integration is properly set up and has access to the database."
                 )
             ]
-    
+
     raise ValueError(f"Unknown tool: {name}")
+
 
 async def main():
     """Main entry point for the server"""
     from mcp.server.stdio import stdio_server
-    
+
     if not NOTION_API_KEY or not DATABASE_ID:
-        raise ValueError("NOTION_API_KEY and NOTION_DATABASE_ID environment variables are required")
-    
+        raise ValueError(
+            "NOTION_API_KEY and NOTION_DATABASE_ID environment variables are required")
+
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
