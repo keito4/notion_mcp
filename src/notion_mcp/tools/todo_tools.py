@@ -23,8 +23,8 @@ class TodoTools:
         todo = await self.client.create_todo(todo_create)
         return self._format_add_message(todo.name, todo.date)
 
-    async def show_todos(self, start_date: Optional[datetime], end_date: Optional[datetime]) -> TextContent:
-        todos = await self.client.fetch_todos(start_date=start_date, end_date=end_date)
+    async def show_todos(self, start_date: Optional[datetime], end_date: Optional[datetime], done: Optional[bool]) -> TextContent:
+        todos = await self.client.fetch_todos(start_date=start_date, end_date=end_date, done=done)
         return self._format_show_message(todos)
 
     async def change_todo_schedule(self, task_id: str, start_datetime: datetime, end_datetime: Optional[datetime]) -> TextContent:

@@ -28,14 +28,15 @@ class NotionClient:
     async def fetch_todos(
         self,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
+        done: Optional[bool] = None
     ) -> List[Todo]:
         """
         Fetch todos from the Notion database with optional date filtering in JST.
         Returns a list of Todo objects.
         """
         filter_condition = build_filter_condition(
-            start_date, end_date, to_utc_date_str)
+            start_date, end_date, to_utc_date_str, done)
         query_payload = build_query_payload(filter_condition)
 
         async with httpx.AsyncClient() as client:

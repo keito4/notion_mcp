@@ -2,23 +2,25 @@ from datetime import datetime
 from ..models.todo import TodoCreate
 
 
-def build_filter_condition(start_date: datetime, end_date: datetime, to_utc_date_str) -> dict:
-    """Build the filter condition dictionary based on optional start/end dates."""
-    if start_date and end_date:
-        return {
-            "and": [
-                {"property": "Date", "date": {
-                    "on_or_after": to_utc_date_str(start_date)}},
-                {"property": "Date", "date": {
-                    "on_or_before": to_utc_date_str(end_date)}}
-            ]
-        }
-    elif start_date:
-        return {"property": "Date", "date": {"on_or_after": to_utc_date_str(start_date)}}
-    elif end_date:
-        return {"property": "Date", "date": {"on_or_before": to_utc_date_str(end_date)}}
-    else:
-        return {}
+def build_filter_condition(start_date: datetime, end_date: datetime, to_utc_date_str, done: bool) -> dict:
+    filter_condition = {
+        "and": []
+    }
+    if done is not None:
+        filter_condition["and"].append(
+            {"property": "Done", "checkbox": {"equals": done}})
+
+    if start_date:
+        filter_condition["and"].append(
+            {"property": "Date", "date": {
+                "on_or_after": to_utc_date_str(start_date)}}
+        )
+    if end_date:
+        filter_condition["and"].append(
+            {"property": "Date", "date": {
+                "on_or_before": to_utc_date_str(end_date)}}
+        )
+    return filter_condition
 
 
 def build_query_payload(filter_condition: dict) -> dict:

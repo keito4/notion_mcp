@@ -27,13 +27,14 @@ async def handle_show_specific_date_todos(arguments: dict) -> Sequence[TextConte
 
     start_str = arguments.get("start_date")
     end_str = arguments.get("end_date")
+    done = arguments.get("done", None)
 
     start_date = datetime.fromisoformat(start_str).replace(
         tzinfo=tz) if start_str else None
     end_date = datetime.fromisoformat(end_str).replace(
         tzinfo=tz) if end_str else None
 
-    return [await todo_tools.show_todos(start_date=start_date, end_date=end_date)]
+    return [await todo_tools.show_todos(start_date=start_date, end_date=end_date, done=done)]
 
 
 async def handle_change_todo_schedule(arguments: dict) -> Sequence[TextContent]:
@@ -91,6 +92,10 @@ TOOL_HANDLERS = {
                 "end_date": {
                     "type": "string",
                     "description": "End date (YYYY-MM-DDTHH:MM:SS.SSSSSS). Can be omitted."
+                },
+                "done": {
+                    "type": "boolean",
+                    "description": "If true, only completed todos will be shown. If false, only uncompleted todos will be shown. If omitted, both completed and uncompleted todos will be shown."
                 }
             },
             "required": ["start_date", "end_date"]
