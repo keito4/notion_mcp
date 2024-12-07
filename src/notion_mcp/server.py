@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .tools.todo_tools import TodoTools, get_tool_definitions
 from .config.settings import get_settings
-
+import pytz
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger('notion_mcp')
@@ -26,6 +26,7 @@ async def list_tools() -> list[Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | EmbeddedResource]:
     """Handle tool calls for todo management"""
+    settings = get_settings()
     try:
         # raise ValueError("Test")
         if not isinstance(arguments, dict):
@@ -42,14 +43,13 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | Embedde
 
             return [await todo_tools.add_todo(task, when)]
 
-        elif name == "show_all_todos":
-            return [await todo_tools.show_todos(date=None)]
-
-        elif name == "show_today_todos":
-            year = arguments.get("year")
-            month = arguments.get("month")
-            day = arguments.get("day")
-            return [await todo_tools.show_todos(date=datetime(year, month, day))]
+        elif name == "show_specific_date_todos":
+            tz = pytz.timezone(settings.tz)
+            start_date = datetime.fromisoformat(
+                arguments.get("start_date")).replace(tzinfo=tz)
+            end_date = datetime.fromisoformat(
+                arguments.get("end_date")).replace(tzinfo=tz)
+            return [await todo_tools.show_todos(start_date=start_date, end_date=end_date)]
 
         elif name == "complete_todo":
             task_id = arguments.get("task_id")

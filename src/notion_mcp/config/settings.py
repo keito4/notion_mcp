@@ -7,6 +7,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     notion_api_key: str = Field(..., env="NOTION_API_KEY")
     notion_database_id: str = Field(..., env="NOTION_DATABASE_ID")
+    tz: str = Field(..., env="TZ")
     notion_version: str = "2022-06-28"
     notion_base_url: str = "https://api.notion.com/v1"
 

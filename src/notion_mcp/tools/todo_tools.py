@@ -2,6 +2,7 @@ from mcp.types import Tool, TextContent
 from typing import List
 import json
 from datetime import datetime
+from typing import Optional
 
 from ..api.notion import NotionClient
 from ..models.todo import TodoCreate
@@ -30,23 +31,19 @@ def get_tool_definitions() -> List[Tool]:
             }
         ),
         Tool(
-            name="show_all_todos",
-            description="Show all todo items from Notion",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": []
-            }
-        ),
-        Tool(
-            name="show_today_todos",
-            description="Show today's todo items from Notion",
+            name="show_specific_date_todos",
+            description="Show todo items from Notion on a specific date",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "year": {"type": "integer"},
-                    "month": {"type": "integer"},
-                    "day": {"type": "integer"}
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DDTHH:MM:SS.SSSSSS)"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DDTHH:MM:SS.SSSSSS)"
+                    }
                 },
                 "required": []
             }
@@ -94,13 +91,11 @@ class TodoTools:
                 todo.date if todo.date else 'later'}"
         )
 
-    async def show_todos(self, date: datetime | None = None) -> TextContent:
+    async def show_todos(self, start_date: datetime.date,
+                         end_date: datetime.date) -> TextContent:
         """Show todos, optionally filtered to a specific date"""
-        todos = await self.client.fetch_todos()
-
-        if date:
-            todos = [todo for todo in todos if todo.date and todo.date.date()
-                     == date.date()]
+        todos = await self.client.fetch_todos(
+            start_date=start_date, end_date=end_date)
 
         return TextContent(
             type="text",
